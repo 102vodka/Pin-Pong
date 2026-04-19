@@ -1,0 +1,94 @@
+from pygame import *
+
+class GameSprite(sprite.Sprite):
+    def __init__(self, color, player_x, player_y, size_x, size_y, player_speed, is_ball=False):
+        super().__init__()
+        self.image = Surface((size_x, size_y), SRCALPHA)
+        if is_ball:
+            draw.circle(self.image, color, (size_x // 2, size_y // 2), size_x // 2)
+            draw.circle(self.image, (0, 0, 0), (size_x // 2, size_y // 2), size_x // 2, 2)
+        else:
+            self.image.fill(color)
+            draw.rect(self.image, (0, 0, 0), (0, 0, size_x, size_y), 3)
+        self.speed = player_speed
+        self.rect = self.image.get_rect()
+        self.rect.x = player_x
+        self.rect.y = player_y
+
+    def reset(self):
+        window.blit(self.image, (self.rect.x, self.rect.y))
+
+class Player(GameSprite):
+    def update_l(self):
+        keys = key.get_pressed()
+        if keys[K_w] and self.rect.y > 5: self.rect.y -= self.speed
+        if keys[K_s] and self.rect.y < win_height - 155: self.rect.y += self.speed
+    def update_r(self):
+        keys = key.get_pressed()
+        if keys[K_UP] and self.rect.y > 5: self.rect.y -= self.speed
+        if keys[K_DOWN] and self.rect.y < win_height - 155: self.rect.y += self.speed
+
+back = (200, 255, 255)
+win_width, win_height = 600, 500
+window = display.set_mode((win_width, win_height))
+display.set_caption("Ping-Pong")
+
+racket1 = Player((255, 255, 255), 30, 200, 20, 150, 7)
+racket2 = Player((255, 255, 255), 550, 200, 20, 150, 7)
+ball = GameSprite((173, 255, 47), 300, 250, 50, 50, 4, is_ball=True)
+
+speed_x, speed_y = 3, 3
+score1, score2 = 0, 0
+max_score = 10
+
+font.init()
+f_score = font.SysFont('Arial', 50)
+f_result = font.SysFont('Arial', 40)
+f_hint = font.SysFont('Arial', 25)
+
+clock = time.Clock()
+game = True
+finish = False
+
+while game:
+    for e in event.get():
+        if e.type == QUIT: game = False
+        if e.type == KEYDOWN:
+            if e.key == K_ESCAPE: game = False
+            if e.key == K_r and finish:
+                score1 = score2 = 0
+                ball.rect.x, ball.rect.y = 300, 250
+                speed_x, speed_y = 3, 3
+                finish = False
+
+    if not finish:
+        window.fill(back)
+        racket1.update_l()
+        racket2.update_r()
+        
+        ball.rect.x += speed_x
+        ball.rect.y += speed_y
+
+        if sprite.collide_rect(racket1, ball) or sprite.collide_rect(racket2, ball):
+            speed_x *= -1.1
+
+        if ball.rect.y > win_height - 50 or ball.rect.y < 0: speed_y *= -1
+
+        if ball.rect.x < 0:
+            score2 += 1
+            ball.rect.x, ball.rect.y, speed_x, speed_y = 300, 250, 3, 3
+        if ball.rect.x > win_width:
+            score1 += 1
+            ball.rect.x, ball.rect.y, speed_x, speed_y = 300, 250, -3, 3
+
+        if score1 >= max_score or score2 >= max_score: finish = True
+
+        window.blit(f_score.render(f"{score1}:{score2}", True, (0, 0, 0)), (270, 10))
+        racket1.reset(); racket2.reset(); ball.reset()
+    else:
+        res_text = "ИГРОК 1 ПОБЕДИЛ!" if score1 >= max_score else "ИГРОК 2 ПОБЕДИЛ!"
+        window.blit(f_result.render(res_text, True, (0, 100, 0)), (130, 200))
+        window.blit(f_hint.render("R - продолжить, ESC - выйти", True, (0, 0, 0)), (170, 260))
+
+    display.update()
+    clock.tick(60)
